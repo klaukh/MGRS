@@ -23,7 +23,14 @@ def PolygonOutlines(inLayer, outLayer, outLayerName):
    in_layer = inLayer
    in_ds = driver.Open(in_layer, 0)
    in_layer = in_ds.GetLayer()
-   srs = in_layer.GetSpatialRef()
+   in_srs = in_layer.GetSpatialRef()
+
+   # output SpatialReference
+   out_srs = osr.SpatialReference()
+   out_srs.ImportFromEPSG(3857)
+   
+   # create the CoordinateTransformation
+   coordTrans = osr.CoordinateTransformation(in_srs, out_srs)
 
    # set and create the output layer (shapefile)
    # remove output file if already there
@@ -32,7 +39,7 @@ def PolygonOutlines(inLayer, outLayer, outLayerName):
        driver.DeleteDataSource(output_layer)
 
    out_ds = driver.CreateDataSource(output_layer)
-   out_layer = out_ds.CreateLayer(output_layer, srs, 
+   out_layer = out_ds.CreateLayer(output_layer, out_srs, 
                geom_type = ogr.wkbLineString)
 
    # get the label layer feature definition
@@ -63,6 +70,7 @@ def PolygonOutlines(inLayer, outLayer, outLayerName):
        # change input feature to geometry collection
        # get the geometry, convert to ring..
        geom_poly = in_feat.geometry()
+       geom_poly.Transform(coordTrans)
        ring = geom_poly.GetGeometryRef(0)
        line_poly = ogr.Geometry(ogr.wkbMultiLineString)
        line_poly.AddGeometry(ring)

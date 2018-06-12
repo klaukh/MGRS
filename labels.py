@@ -23,8 +23,15 @@ def PolygonCentroids(inLayer, outLayer, outLayerName):
    in_layer = inLayer
    ds = driver.Open(in_layer, 0)
    in_layer = ds.GetLayer()
-   srs = in_layer.GetSpatialRef()
+   in_srs = in_layer.GetSpatialRef()
    
+   # output SpatialReference
+   out_srs = osr.SpatialReference()
+   out_srs.ImportFromEPSG(3857)
+   
+   # create the CoordinateTransformation
+   coordTrans = osr.CoordinateTransformation(in_srs, out_srs)
+
    # set the output layer (shapefile)... we're putting the labels
    # at the centroids
    out_layer = outLayer
@@ -35,7 +42,7 @@ def PolygonCentroids(inLayer, outLayer, outLayerName):
    
    # create the output shapefile
    ods = driver.CreateDataSource(out_layer)
-   out_layer = ods.CreateLayer(outLayerName, srs, geom_type = ogr.wkbPoint)
+   out_layer = ods.CreateLayer(outLayerName, out_srs, geom_type = ogr.wkbPoint)
    
    # add input file fields to output file
    in_layer_defs = in_layer.GetLayerDefn()
@@ -64,8 +71,10 @@ def PolygonCentroids(inLayer, outLayer, outLayerName):
 
            progress(i*field_count + j, total, "processed")
    
-       # get the geometry and the centroids
+       # get the geometry and the centroids... transforming for
+       # for the preferred SRS
        geom = in_feat.GetGeometryRef()
+       geom.Transform(coordTrans)
        centroid = geom.Centroid()
        out_feat.SetGeometry(centroid)
        out_layer.CreateFeature(out_feat)
